@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Clínica Veterinaria - Gestión</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0px 0px 10px rgba(0,0,0,0.1); }
+        h1, h2 { color: #333; text-align: center; }
+        form { display: grid; gap: 10px; margin-bottom: 20px; background: #fafafa; padding: 15px; border-radius: 6px; }
+        input, button { padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; }
+        button { background-color: #28a745; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background-color: #218838; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #007bff; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐾 Sistema de Clínica Veterinaria</h1>
+        
+        <h2>Registrar Nuevo Dueño</h2>
+        <form action="/add" method="POST">
+            <input type="text" name="name" placeholder="Nombre completo" required>
+            <input type="text" name="phone" placeholder="Teléfono" required>
+            <input type="email" name="email" placeholder="Correo electrónico" required>
+            <input type="text" name="address" placeholder="Dirección" required>
+            <button type="submit">Guardar Dueño</button>
+        </form>
+
+        <h2>Lista de Dueños Registrados</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Teléfono</th>
+                    <th>Correo</th>
+                    <th>Dirección</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for owner in owners %}
+                <tr>
+                    <td>{{ owner.id }}</td>
+                    <td>{{ owner.name }}</td>
+                    <td>{{ owner.phone }}</td>
+                    <td>{{ owner.email }}</td>
+                    <td>{{ owner.address }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" style="text-align: center;">No hay dueños registrados todavía.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
