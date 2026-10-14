@@ -1,60 +1,84 @@
-import os
-from flask import Flask, render_template, request, redirect, url_for
-import pymysql
+from flask import Flask, render_template, request, redirect, url_for, flash
+from flask_sqlalchemy import SQLAlchemy
+import socket
 
 app = Flask(__name__)
+app.secret_key = 'clave_secreta_muy_segura'
 
-DB_HOST = os.environ.get("DB_HOST", "192.168.56.13")
-DB_USER = os.environ.get("DB_USER", "app_user")
-DB_PASSWORD = os.environ.get("DB_PASSWORD", "AppPass123!")
-DB_NAME = os.environ.get("DB_NAME", "vet_clinic_db")
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://app_user:AppPass123!@192.168.56.10:3306/vet_clinic_db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-def get_db_connection():
-    return pymysql.connect(
-        host=DB_HOST,
-        user=DB_USER,
-        password=DB_PASSWORD,
-        database=DB_NAME,
-        cursorclass=pymysql.cursors.DictCursor
-    )
+db = SQLAlchemy(app)
 
-@app.route("/")
-def login():
-    return render_template("login.html")
+class Owner(db.Model):
+    __tablename__ = 'owners'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    phone = db.Column(db.String(20))
+    email = db.Column(db.String(100))
+    address = db.Column(db.String(255))
 
-@app.route("/inicio")
-def inicio():
-    return render_template("Inicio.html")
+class Pet(db.Model):
+    __tablename__ = 'pets'
+    id = db.Column(db.Integer, primary_key=True)
+    owner_id = db.Column(db.Integer, db.ForeignKey('owners.id'))
+    name = db.Column(db.String(100), nullable=False)
+    species = db.Column(db.String(50))
+    breed = db.Column(db.String(50))
+    age = db.Column(db.Integer)
+    weight = db.Column(db.Numeric(5, 2))
 
-@app.route("/pacientes")
-def pacientes():
-    connection = get_db_connection()
-    with connection.cursor() as cursor:
-        cursor.execute("SELECT * FROM owners")
-        owners = cursor.fetchall()
-    connection.close()
-    return render_template("pacientes.html", owners=owners)
+class Consultation(db.Model):
+    __tablename__ = 'consultations'
+    id = db.Column(db.Integer, primary_key=True)
+    pet_id = db.Column(db.Integer, db.ForeignKey('pets.id'))
+    reason = db.Column(db.Text)
+    diagnosis = db.Column(db.Text)
+    consultation_date = db.Column(db.DateTime, server_default=db.func.now())
 
-@app.route("/registrar", methods=["GET", "POST"])
-def registrar():
-    if request.method == "POST":
-        name = request.form["name"]
-        phone = request.form["phone"]
-        email = request.form["email"]
-        address = request.form["address"]
+@app.route('/')
+def index():
+    return redirect(url_for('registrar_paciente'))
 
-        connection = get_db_connection()
-        with connection.cursor() as cursor:
-            sql = "INSERT INTO owners (name, phone, email, address) VALUES (%s, %s, %s, %s)"
-            cursor.execute(sql, (name, phone, email, address))
-            connection.commit()
-        connection.close()
-        return redirect(url_for("pacientes"))
-    return render_template("index.html")
+@app.route('/registrar', methods=['GET', 'POST'])
+def registrar_paciente():
+    if request.method == 'POST':
+        try:
+            owner = Owner(
+                name=request.form['owner_name'],
+                phone=request.form.get('owner_phone'),
+                email=request.form.get('owner_email'),
+                address=request.form.get('owner_address')
+            )
+            db.session.add(owner)
+            db.session.flush()
 
-@app.route("/usuarios")
-def usuarios():
-    return render_template("usuarios.html")
+            pet = Pet(
+                owner_id=owner.id,
+                name=request.form['pet_name'],
+                species=request.form.get('pet_species'),
+                breed=request.form.get('pet_breed'),
+                age=request.form.get('pet_age'),
+                weight=request.form.get('pet_weight')
+            )
+            db.session.add(pet)
+            db.session.flush()
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+            consultation = Consultation(
+                pet_id=pet.id,
+                reason=request.form['reason'],
+                diagnosis=request.form.get('diagnosis')
+            )
+            db.session.add(consultation)
+            db.session.commit()
+            flash('Paciente registrado exitosamente!', 'success')
+            return redirect(url_for('registrar_paciente'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al registrar: {str(e)}', 'danger')
+
+    hostname = socket.gethostname()
+    return render_template('index.html', hostname=hostname)
+
+if __name__ == '__main__':
+    app.run(debug=True)
